@@ -1,3 +1,8 @@
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
 import 'dotenv/config'
 import cors from 'cors'
 import express from 'express'
@@ -5,7 +10,8 @@ import express from 'express'
 type Result = { title: string; url: string; description: string; favicon?: string; imageUrl?: string; age?: string }
 const app = express()
 const port = Number(process.env.PORT || 8787)
-app.use(cors({ origin: process.env.CLIENT_ORIGIN || 'http://localhost:5173' }))
+app.use(cors({ origin: process.env.CLIENT_ORIGIN || '*' }))
+app.use(express.static(path.join(__dirname, '../dist')))
 
 app.get('/api/health', (_request, response) => response.json({ ok: true, provider: process.env.BRAVE_SEARCH_API_KEY ? 'brave' : 'free-public-api' }))
 app.get('/api/search', async (request, response) => {
@@ -86,5 +92,12 @@ function decodeRedirect(url: string) {
 function cleanHtml(value: string) {
   return value.replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#x27;|&#39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/\s+/g, ' ').trim()
 }
+
+app.use((request, response, next) => {
+  if (request.method === 'GET' && !request.path.startsWith('/api')) {
+    return response.sendFile(path.join(__dirname, '../dist/index.html'))
+  }
+  next()
+})
 
 app.listen(port, () => console.log(`NovaSearch server listening on http://localhost:${port}`))
